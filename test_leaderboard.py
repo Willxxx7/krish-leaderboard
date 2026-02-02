@@ -7,7 +7,7 @@ def test_health_check():
     print("✅ Health check PASSED")
 
 def test_submit_score():
-    response = requests.post("https://krish-leaderboard.onrender.com/submit_result",
+    response = requests.post("https://krish-leaderboard.onrender.com/submit",
                               json={"name": "UnitTest", "time_s": 99.9})
     assert response.status_code == 200
     print("✅ Score submission PASSED")

@@ -146,6 +146,18 @@ def submit_result():
 def health_check():
     """Health check endpoint - returns 200 OK for monitoring systems"""
     return "OK", 200
+
+@app.route('/submit', methods=['POST'])
+def submit_score():
+    data = request.json
+    conn = sqlite3.connect('/tmp/leaderboard.db')  # Render writable path
+    c = conn.cursor()
+    c.execute('INSERT INTO scores (name, score) VALUES (?, ?)', 
+              (data['name'], data['score']))
+    conn.commit()
+    conn.close()
+    return jsonify({'status': 'success'})
+
 # ==========================================
 if __name__ == "__main__":
     init_db()
