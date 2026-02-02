@@ -160,6 +160,12 @@ def index():
                     'timestamp': row[2]
                 })
         
+        # Calculate best time safely
+        if indexed_game_scores:
+            best_time = f"{indexed_game_scores[0]['time']:.2f}"
+        else:
+            best_time = "0.00"
+        
         # SIMPLE HTML TEMPLATE WITHOUT COMPLEX JINJA2 FORMATTING
         html = f"""
         <!DOCTYPE html>
@@ -414,9 +420,7 @@ def index():
                         <div class="stat-label">Test Scores</div>
                     </div>
                     <div class="stat">
-                        <div class="stat-value">
-                            {indexed_game_scores[0]['time']:.2f if indexed_game_scores else '0.00'}
-                        </div>
+                        <div class="stat-value">{best_time}</div>
                         <div class="stat-label">Best Time</div>
                     </div>
                 </div>
