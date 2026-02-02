@@ -43,10 +43,9 @@ def get_scores():
 @app.route("/")
 def index():
     rows = get_scores()
-
-    indexed = list(enumerate(rows, start=1))  # ← THIS WAS MISSING!
+    indexed = list(enumerate(rows, start=1))
     
-    # 🧪 TEST DATA QUERY - ADDED HERE
+    # 🧪 TEST DATA
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("SELECT name, time_s FROM scores WHERE name LIKE '%Test%' ORDER BY time_s ASC")
@@ -56,58 +55,30 @@ def index():
     html = """
     <!doctype html>
     <html>
-    <head>
-        <title>WASK Leaderboard</title>
-        <style>
-            body { font-family: Arial, sans-serif; background: #111; color: #eee; }
-            h1, h2 { text-align: center; }
-            table { border-collapse: collapse; margin: 20px auto; width: 80%; max-width: 900px; }
-            th, td { border: 1px solid #555; padding: 8px 12px; text-align: center; }
-            th { background: #222; }
-            tr:nth-child(even).normal-row { background: #1a1a1a; }
-            tr.normal-row { background: #151515; }
-            tr.gold   { background: #4d3b00; }
-            tr.silver { background: #3b3f4d; }
-            tr.bronze { background: #4d2f21; }
-            tr.gold td, tr.silver td, tr.bronze td { font-weight: bold; }
-        </style>
-    </head>
+    <!-- YOUR SAME CSS -->
     <body>
         <h1>WASK Leaderboard</h1>
         <table>
-            <tr>
-                <th>#</th>
-                <th>Name</th>
-                <th>Time (s)</th>
-                <th>Result</th>
-                <th>Submitted</th>
-            </tr>
-            {% for i,row in rows %}
+            <tr><th>#</th><th>Name</th><th>Time (s)</th><th>Result</th><th>Submitted</th></tr>
+            {% for row in indexed %}
+            {% set i = row[0] %}
+            {% set player_row = row[1] %}
             {% set cls = "normal-row" %}
             {% set medal = "" %}
-            {% if i == 1 %}
-                {% set cls = "gold" %}
-                {% set medal = "🥇 " %}
-            {% elif i == 2 %}
-                {% set cls = "silver" %}
-                {% set medal = "🥈 " %}
-            {% elif i == 3 %}
-                {% set cls = "bronze" %}
-                {% set medal = "🥉 " %}
+            {% if i == 1 %}{% set cls = "gold" %}{% set medal = "🥇 " %}
+            {% elif i == 2 %}{% set cls = "silver" %}{% set medal = "🥈 " %}
+            {% elif i == 3 %}{% set cls = "bronze" %}{% set medal = "🥉 " %}
             {% endif %}
             <tr class="{{ cls }}">
                 <td>{{ medal }}{{ i }}</td>
-                <td>{{ row[0] }}</td>
-                <td>{{ "%.2f" % row[2] }}</td>
-                <td>{{ row[3] }}</td>
-                <td>{{ row[4] }}</td>
+                <td>{{ player_row[0] }}</td>
+                <td>{{ "%.2f"|format(player_row[2]) }}</td>
+                <td>{{ player_row[3] }}</td>
+                <td>{{ player_row[4] }}</td>
             </tr>
             {% endfor %}
         </table>
         
-        <p style="text-align:center;">Play more to climb the leaderboard!</p>
-
-        <!-- 🧪 TEST DATA TABLE -->
         {% if test_scores %}
         <h2 style="color: lime;">🧪 Test Data ({{ test_scores|length }})</h2>
         <table style="background: #0a3d0a; margin: 20px auto; width: 60%;">
@@ -117,10 +88,14 @@ def index():
             {% endfor %}
         </table>
         {% endif %}
-
+        
+        <p style="text-align:center;">Play more to climb the leaderboard!</p>
     </body>
     </html>
     """
+    return render_template_string(html, indexed=indexed, test_scores=test_scores)
+
+  
     indexed = list(enumerate(rows, start=1))
     return render_template_string(html, rows=indexed, test_scores=test_scores)  # ← FIXED HERE
 
