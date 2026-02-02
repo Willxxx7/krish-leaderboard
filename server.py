@@ -4,7 +4,9 @@ import sqlite3
 
 app = Flask(__name__)
 
+
 DB_PATH = "leaderboard.db"
+
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -22,6 +24,7 @@ def init_db():
     conn.commit()
     conn.close()
 
+
 def add_score(name, email, time_s, outcome):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -32,6 +35,7 @@ def add_score(name, email, time_s, outcome):
     conn.commit()
     conn.close()
 
+
 def get_scores():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -40,19 +44,10 @@ def get_scores():
     conn.close()
     return rows
 
+
 @app.route("/")
 def index():
     rows = get_scores()
-
-    indexed = list(enumerate(rows, start=1))  # ← THIS WAS MISSING!
-    
-    # 🧪 TEST DATA QUERY - ADDED HERE
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("SELECT name, time_s FROM scores WHERE name LIKE '%Test%' ORDER BY time_s ASC")
-    test_scores = c.fetchall()
-    conn.close()
-    
     html = """
     <!doctype html>
     <html>
@@ -60,16 +55,23 @@ def index():
         <title>WASK Leaderboard</title>
         <style>
             body { font-family: Arial, sans-serif; background: #111; color: #eee; }
-            h1, h2 { text-align: center; }
+            h1 { text-align: center; }
             table { border-collapse: collapse; margin: 20px auto; width: 80%; max-width: 900px; }
             th, td { border: 1px solid #555; padding: 8px 12px; text-align: center; }
             th { background: #222; }
+
             tr:nth-child(even).normal-row { background: #1a1a1a; }
             tr.normal-row { background: #151515; }
+
             tr.gold   { background: #4d3b00; }
             tr.silver { background: #3b3f4d; }
             tr.bronze { background: #4d2f21; }
-            tr.gold td, tr.silver td, tr.bronze td { font-weight: bold; }
+
+            tr.gold   td,
+            tr.silver td,
+            tr.bronze td {
+                font-weight: bold;
+            }
         </style>
     </head>
     <body>
@@ -104,25 +106,26 @@ def index():
             </tr>
             {% endfor %}
         </table>
-        
         <p style="text-align:center;">Play more to climb the leaderboard!</p>
 
-        <!-- 🧪 TEST DATA TABLE -->
-        {% if test_scores %}
-        <h2 style="color: lime;">🧪 Test Data ({{ test_scores|length }})</h2>
-        <table style="background: #0a3d0a; margin: 20px auto; width: 60%;">
-            <tr><th>Rank</th><th>Test Player</th><th>Time (s)</th></tr>
-            {% for i, row in enumerate(test_scores) %}
-            <tr><td>{{ i+1 }}</td><td><strong style="color: lime;">{{ row[0] }}</strong></td><td>{{ "%.2f"|format(row[1]) }}</td></tr>
-            {% endfor %}
-        </table>
-        {% endif %}
+        <!-- ADD THIS AFTER your main </table> -->
+{% if test_scores %}
+<h2 style="color: lime;">🧪 Test Data ({{ test_scores|length }})</h2>
+<table style="background: #0a3d0a; margin: 20px auto; width: 60%;">
+    <tr><th>Rank</th><th>Test Player</th><th>Time (s)</th></tr>
+    {% for i, row in enumerate(test_scores) %}
+    <tr><td>{{ i+1 }}</td><td><strong style="color: lime;">{{ row[0] }}</strong></td><td>{{ "%.2f"|format(row[1]) }}</td></tr>
+    {% endfor %}
+</table>
+{% endif %}
 
     </body>
+    
     </html>
     """
     indexed = list(enumerate(rows, start=1))
-    return render_template_string(html, rows=indexed, test_scores=test_scores)  # ← FIXED HERE
+    return render_template_string(html, rows=indexed)
+
 
 @app.route("/leaderboard")
 def api_leaderboard():
@@ -132,6 +135,7 @@ def api_leaderboard():
         for r in rows
     ]
     return jsonify(data)
+
 
 @app.route("/submit_result", methods=["POST"])
 def submit_result():
@@ -150,6 +154,7 @@ def submit_result():
         "outcome": outcome
     }})
 
+# ===== ADD HEALTH CHECK RIGHT HERE 👇 =====
 @app.route('/health')
 def health_check():
     """Health check endpoint - returns 200 OK for monitoring systems"""
@@ -158,14 +163,15 @@ def health_check():
 @app.route('/submit', methods=['POST'])
 def submit_score():
     data = request.json
-    conn = sqlite3.connect(DB_PATH)  # ← FIXED: Use DB_PATH
+    conn = sqlite3.connect('/tmp/leaderboard.db')  # Render writable path
     c = conn.cursor()
-    c.execute('INSERT INTO scores (name, time_s) VALUES (?, ?)',  # ← FIXED: time_s not score
-              (data['name'], data['time_s']))  # ← FIXED: time_s not score
+    c.execute('INSERT INTO scores (name, score) VALUES (?, ?)', 
+              (data['name'], data['score']))
     conn.commit()
     conn.close()
     return jsonify({'status': 'success'})
 
+# ==========================================
 if __name__ == "__main__":
     init_db()
     app.run(host="127.0.0.1", port=5000, debug=True)
