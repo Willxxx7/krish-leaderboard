@@ -9,7 +9,7 @@ app = Flask(__name__)
 # Database configuration for Render.com
 if os.environ.get('RENDER'):
     DB_PATH = "/tmp/leaderboard.db"
-    print(f"⚡ RENDER ENVIRONMENT DETECTED")
+    print("⚡ RENDER ENVIRONMENT DETECTED")
     print(f"⚡ Database: {DB_PATH}")
 else:
     DB_PATH = "leaderboard.db"
@@ -61,58 +61,31 @@ def add_score(name, email, time_s, outcome, score_type='game'):
         c = conn.cursor()
         timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
         
+        # Ensure time_s is float
+        try:
+            time_s_float = float(time_s)
+        except:
+            time_s_float = 0.0
+        
         c.execute("""
             INSERT INTO scores (name, email, time_s, outcome, score_type, timestamp) 
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (name, email, time_s, outcome, score_type, timestamp))
+        """, (name, email, time_s_float, outcome, score_type, timestamp))
         
         conn.commit()
         conn.close()
-        print(f"✅ Score added: {name} - {time_s}s - {score_type}")
+        print(f"✅ Score added: {name} - {time_s_float}s - {score_type}")
         return True
     except Exception as e:
         print(f"❌ Error adding score: {e}")
-        # Try to create table if it doesn't exist
-        try:
-            conn = sqlite3.connect(DB_PATH)
-            c = conn.cursor()
-            c.execute("""
-                CREATE TABLE IF NOT EXISTS scores (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT NOT NULL,
-                    email TEXT,
-                    time_s REAL NOT NULL,
-                    outcome TEXT NOT NULL,
-                    score_type TEXT DEFAULT 'game',
-                    timestamp TEXT NOT NULL
-                )
-            """)
-            conn.commit()
-            conn.close()
-            print("✅ Created missing table, retrying...")
-            return add_score(name, email, time_s, outcome, score_type)
-        except Exception as e2:
-            print(f"❌ Failed to create table: {e2}")
-            return False
+        print(traceback.format_exc())
+        return False
 
 def get_scores_by_type(score_type):
-    """Get scores by type ('game' or 'test')"""
+    """Get scores by type ('game' or 'test') - returns float for time_s"""
     try:
-        # Ensure table exists
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS scores (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                email TEXT,
-                time_s REAL NOT NULL,
-                outcome TEXT NOT NULL,
-                score_type TEXT DEFAULT 'game',
-                timestamp TEXT NOT NULL
-            )
-        """)
-        conn.commit()
         
         if score_type == 'game':
             c.execute("""
@@ -131,9 +104,27 @@ def get_scores_by_type(score_type):
         
         rows = c.fetchall()
         conn.close()
-        return rows
+        
+        # Convert time_s to float to ensure it's numeric
+        converted_rows = []
+        for row in rows:
+            if score_type == 'game':
+                try:
+                    time_float = float(row[1])
+                    converted_rows.append((row[0], time_float, row[2], row[3]))
+                except:
+                    converted_rows.append((row[0], 0.0, row[2], row[3]))
+            else:
+                try:
+                    time_float = float(row[1])
+                    converted_rows.append((row[0], time_float, row[2]))
+                except:
+                    converted_rows.append((row[0], 0.0, row[2]))
+        
+        return converted_rows
     except Exception as e:
         print(f"❌ Error getting scores: {e}")
+        print(traceback.format_exc())
         return []
 
 @app.route("/")
@@ -143,7 +134,7 @@ def index():
         # Initialize database if needed
         init_db()
         
-        # Get scores
+        # Get scores (time_s will be float)
         game_scores = get_scores_by_type('game')
         test_scores = get_scores_by_type('test')
         
@@ -186,6 +177,14 @@ def index():
                     color: #4CAF50;
                     font-size: 1.5em;
                     margin-bottom: 15px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
+                
+                .section-count {
+                    font-size: 0.8em;
+                    color: #888;
                 }
                 
                 table {
@@ -212,6 +211,10 @@ def index():
                     background: #1f1f1f;
                 }
                 
+                .game-table tr:nth-child(odd) {
+                    background: #252525;
+                }
+                
                 .test-table {
                     background: #0a3d0a;
                 }
@@ -220,6 +223,11 @@ def index():
                     background: #0c5a0c;
                 }
                 
+                .test-table tr:nth-child(odd) {
+                    background: #084a08;
+                }
+                
+                /* Medal styling */
                 .gold {
                     background: #4d3b00 !important;
                     color: #ffd700;
@@ -238,46 +246,86 @@ def index():
                     font-weight: bold;
                 }
                 
-                .medal {
+                .medal-icon {
                     font-size: 1.2em;
+                    margin-right: 5px;
                 }
                 
-                .empty {
+                .time-cell {
+                    font-family: 'Courier New', monospace;
+                    font-weight: bold;
+                    color: #4CAF50;
+                }
+                
+                .test-name {
+                    color: #4CAF50;
+                    font-weight: bold;
+                }
+                
+                .empty-message {
                     text-align: center;
                     padding: 30px;
                     color: #888;
                     font-style: italic;
+                    font-size: 1.1em;
                 }
                 
                 .stats {
                     display: flex;
                     justify-content: space-around;
-                    margin-top: 20px;
-                    padding: 15px;
+                    margin-top: 30px;
+                    padding: 20px;
                     background: #222;
-                    border-radius: 8px;
+                    border-radius: 10px;
                 }
                 
-                .stat {
+                .stat-item {
                     text-align: center;
                 }
                 
                 .stat-value {
-                    font-size: 1.5em;
-                    color: #4CAF50;
+                    font-size: 1.8em;
                     font-weight: bold;
+                    color: #4CAF50;
+                    margin-bottom: 5px;
                 }
                 
                 .stat-label {
                     color: #aaa;
                     font-size: 0.9em;
+                    text-transform: uppercase;
                 }
                 
                 footer {
                     text-align: center;
-                    margin-top: 30px;
+                    margin-top: 40px;
                     color: #666;
                     font-size: 0.9em;
+                    padding-top: 20px;
+                    border-top: 1px solid #333;
+                }
+                
+                @media (max-width: 768px) {
+                    .container {
+                        padding: 10px;
+                    }
+                    
+                    table {
+                        font-size: 0.9em;
+                    }
+                    
+                    th, td {
+                        padding: 8px;
+                    }
+                    
+                    .section {
+                        padding: 15px;
+                    }
+                    
+                    .stats {
+                        flex-direction: column;
+                        gap: 15px;
+                    }
                 }
             </style>
         </head>
@@ -287,7 +335,11 @@ def index():
                 
                 <!-- Game Scores -->
                 <div class="section">
-                    <div class="section-title">🎮 Game Scores</div>
+                    <div class="section-title">
+                        <span>🎮 Game Scores</span>
+                        <span class="section-count">{{ game_count }} players</span>
+                    </div>
+                    
                     {% if game_scores %}
                     <table class="game-table">
                         <tr>
@@ -300,26 +352,32 @@ def index():
                         {% for i, row in game_scores %}
                         <tr class="{% if i == 1 %}gold{% elif i == 2 %}silver{% elif i == 3 %}bronze{% endif %}">
                             <td>
-                                {% if i == 1 %}<span class="medal">🥇</span>{% endif %}
-                                {% if i == 2 %}<span class="medal">🥈</span>{% endif %}
-                                {% if i == 3 %}<span class="medal">🥉</span>{% endif %}
+                                {% if i == 1 %}<span class="medal-icon">🥇</span>{% endif %}
+                                {% if i == 2 %}<span class="medal-icon">🥈</span>{% endif %}
+                                {% if i == 3 %}<span class="medal-icon">🥉</span>{% endif %}
                                 {{ i }}
                             </td>
                             <td>{{ row[0] }}</td>
-                            <td>{{ "%.2f" % row[1] }}</td>
+                            <td class="time-cell">{{ "%.2f"|format(row[1]) }}</td>
                             <td>{{ row[2] }}</td>
                             <td>{{ row[3] }}</td>
                         </tr>
                         {% endfor %}
                     </table>
                     {% else %}
-                    <div class="empty">No game scores yet. Be the first to play!</div>
+                    <div class="empty-message">
+                        🏁 No game scores yet. Be the first to play!
+                    </div>
                     {% endif %}
                 </div>
                 
                 <!-- Test Scores -->
                 <div class="section">
-                    <div class="section-title">🧪 Test Scores</div>
+                    <div class="section-title">
+                        <span>🧪 Test Scores</span>
+                        <span class="section-count" style="color: #4CAF50;">{{ test_count }} tests</span>
+                    </div>
+                    
                     {% if test_scores %}
                     <table class="test-table">
                         <tr>
@@ -331,37 +389,51 @@ def index():
                         {% for i, row in test_scores %}
                         <tr>
                             <td>{{ i }}</td>
-                            <td>{{ row[0] }}</td>
-                            <td>{{ "%.2f" % row[1] }}</td>
+                            <td class="test-name">{{ row[0] }}</td>
+                            <td class="time-cell">{{ "%.2f"|format(row[1]) }}</td>
                             <td>{{ row[2] }}</td>
                         </tr>
                         {% endfor %}
                     </table>
                     {% else %}
-                    <div class="empty">No test scores yet. Run test_leaderboard.py!</div>
+                    <div class="empty-message">
+                        🚀 No test scores yet. Run <code>test_leaderboard.py</code> to add test data!
+                    </div>
                     {% endif %}
                 </div>
                 
                 <!-- Stats -->
                 <div class="stats">
-                    <div class="stat">
-                        <div class="stat-value">{{ game_scores|length }}</div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ game_count }}</div>
                         <div class="stat-label">Game Players</div>
                     </div>
-                    <div class="stat">
-                        <div class="stat-value">{{ test_scores|length }}</div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ test_count }}</div>
                         <div class="stat-label">Test Scores</div>
                     </div>
-                    <div class="stat">
+                    <div class="stat-item">
                         <div class="stat-value">
-                            {% if game_scores %}{{ "%.2f" % game_scores[0][1] }}{% else %}0.00{% endif %}
+                            {% if game_scores %}{{ "%.2f"|format(game_scores[0][1]) }}{% else %}0.00{% endif %}
                         </div>
-                        <div class="stat-label">Best Time</div>
+                        <div class="stat-label">Best Time (s)</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">
+                            {% if game_scores or test_scores %}🟢 Active{% else %}⚪ Ready{% endif %}
+                        </div>
+                        <div class="stat-label">Status</div>
                     </div>
                 </div>
                 
                 <footer>
-                    <p>Running on Render.com | Database: {{ db_path }}</p>
+                    <p>🔧 <strong>Endpoints:</strong> 
+                       <code>/submit_result</code> (game scores) | 
+                       <code>/submit</code> (test scores)
+                    </p>
+                    <p>📊 <strong>API:</strong> <code>/leaderboard</code> | 
+                       <strong>Health:</strong> <code>/health</code></p>
+                    <p>🚀 <strong>Deployed on Render.com</strong> | Database: {{ db_path }}</p>
                 </footer>
             </div>
         </body>
@@ -375,18 +447,23 @@ def index():
             html, 
             game_scores=indexed_game_scores,
             test_scores=indexed_test_scores,
+            game_count=len(game_scores),
+            test_count=len(test_scores),
             db_path=DB_PATH
         )
         
     except Exception as e:
         print(f"❌ Error in index: {e}")
+        print(traceback.format_exc())
         return f"""
         <html>
         <body style="background: #111; color: #eee; padding: 40px; font-family: monospace;">
             <h1>⚠️ Server Error</h1>
-            <p>Error: {str(e)}</p>
-            <p>Database path: {DB_PATH}</p>
-            <p>Try refreshing the page.</p>
+            <p><strong>Error:</strong> {str(e)}</p>
+            <p><strong>Database path:</strong> {DB_PATH}</p>
+            <p><strong>Game scores count:</strong> {len(game_scores) if 'game_scores' in locals() else 'N/A'}</p>
+            <p><strong>Test scores count:</strong> {len(test_scores) if 'test_scores' in locals() else 'N/A'}</p>
+            <p>Try refreshing the page or checking Render logs.</p>
         </body>
         </html>
         """, 500
@@ -408,6 +485,7 @@ def api_leaderboard():
         ]
         return jsonify(data)
     except Exception as e:
+        print(f"❌ API error: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route("/submit_result", methods=["POST"])
@@ -420,7 +498,7 @@ def submit_result():
             
         name = data.get('name', 'Player').strip()
         email = data.get('email', '').strip()
-        time_s = float(data.get('time_s', 0.0))
+        time_s = data.get('time_s', 0.0)
         outcome = data.get('outcome', 'unknown').strip()
         
         success = add_score(name, email, time_s, outcome, 'game')
@@ -439,6 +517,7 @@ def submit_result():
             return jsonify({"error": "Failed to add score"}), 500
             
     except Exception as e:
+        print(f"❌ Submit result error: {e}")
         return jsonify({"error": str(e)}), 400
 
 @app.route('/health')
@@ -460,16 +539,26 @@ def health_check():
         c.execute("SELECT COUNT(*) FROM scores")
         count = c.fetchone()[0]
         
+        # Get score stats
+        c.execute("SELECT COUNT(*) FROM scores WHERE score_type = 'game'")
+        game_count = c.fetchone()[0]
+        
+        c.execute("SELECT COUNT(*) FROM scores WHERE score_type = 'test'")
+        test_count = c.fetchone()[0]
+        
         conn.close()
         
         return jsonify({
             "status": "healthy",
             "database": "connected",
             "tables": [t[0] for t in tables],
-            "score_count": count,
+            "total_scores": count,
+            "game_scores": game_count,
+            "test_scores": test_count,
             "path": DB_PATH
         })
     except Exception as e:
+        print(f"❌ Health check error: {e}")
         return jsonify({"status": "unhealthy", "error": str(e)}), 500
 
 @app.route('/submit', methods=['POST'])
@@ -481,7 +570,7 @@ def submit():
             return jsonify({"error": "No data"}), 400
             
         name = data.get('name', 'TestPlayer').strip()
-        time_s = float(data.get('time_s', 0.0))
+        time_s = data.get('time_s', 0.0)
         
         success = add_score(name, '', time_s, 'test', 'test')
         
@@ -495,6 +584,7 @@ def submit():
             return jsonify({"error": "Failed to add test score"}), 500
             
     except Exception as e:
+        print(f"❌ Submit test error: {e}")
         return jsonify({"error": str(e)}), 400
 
 # Initialize database when app starts
