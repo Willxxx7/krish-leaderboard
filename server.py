@@ -107,7 +107,20 @@ def index():
             {% endfor %}
         </table>
         <p style="text-align:center;">Play more to climb the leaderboard!</p>
+
+        <!-- ADD THIS AFTER your main </table> -->
+{% if test_scores %}
+<h2 style="color: lime;">🧪 Test Data ({{ test_scores|length }})</h2>
+<table style="background: #0a3d0a; margin: 20px auto; width: 60%;">
+    <tr><th>Rank</th><th>Test Player</th><th>Time (s)</th></tr>
+    {% for i, row in enumerate(test_scores) %}
+    <tr><td>{{ i+1 }}</td><td><strong style="color: lime;">{{ row[0] }}</strong></td><td>{{ "%.2f"|format(row[1]) }}</td></tr>
+    {% endfor %}
+</table>
+{% endif %}
+
     </body>
+    
     </html>
     """
     indexed = list(enumerate(rows, start=1))
