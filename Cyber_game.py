@@ -291,7 +291,8 @@ q_buttons = []
 # SERVER SUBMISSION
 # ---------------------------------------------------------------------
 def submit_result_to_server(name, email, time_s, outcome):
-    url = "http://127.0.0.1:5000/submit_result"
+   # url = "http://127.0.0.1:5000/submit_result"
+    url = "https://krish-leaderboard.onrender.com/submit_result"    
     payload = {
         "name": name or "Player",
         "email": email or "",
@@ -734,7 +735,8 @@ while running:
                 email_text = ""
                 typing_name = True
             elif board_r.collidepoint(click_pos):
-                webbrowser.open("http://127.0.0.1:5000/")
+               # webbrowser.open("http://127.0.0.1:5000/")
+                webbrowser.open("https://krish-leaderboard.onrender.com/")
             elif quit_r.collidepoint(click_pos):
                 running = False
 
