@@ -1,5 +1,3 @@
-# test_leaderboard.py code below
-
 import requests
 
 print("🚀 KRISH LEADERBOARD - DUAL TESTS (Local + Production)\n")
@@ -12,7 +10,7 @@ def test_local_server():
         print(f"   ✅ LOCAL Health: {r.status_code} - {r.text}")
 
         r = requests.post("http://localhost:5000/submit",
-                          json={"name": "LocalTest", "score": 999},
+                          json={"name": "LocalTest", "time_s": 999},  # ← FIXED: time_s
                           timeout=3)
         assert r.status_code == 200
         print(f"   ✅ LOCAL Submit: {r.status_code}")
@@ -30,7 +28,7 @@ def test_render_production():
         print("✅ PRODUCTION Health check PASSED")
 
         r = requests.post("https://krish-leaderboard.onrender.com/submit",
-                          json={"name": "RenderTest", "score": 888},
+                          json={"name": "RenderTest", "time_s": 888},  # ← FIXED: time_s
                           timeout=10)
         assert r.status_code == 200
         print("✅ PRODUCTION Score submission PASSED")
