@@ -43,6 +43,8 @@ def get_scores():
 @app.route("/")
 def index():
     rows = get_scores()
+
+    indexed = list(enumerate(rows, start=1))  # ← THIS WAS MISSING!
     
     # 🧪 TEST DATA QUERY - ADDED HERE
     conn = sqlite3.connect(DB_PATH)
