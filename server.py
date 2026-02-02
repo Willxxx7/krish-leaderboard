@@ -4,6 +4,7 @@ import sqlite3
 
 app = Flask(__name__)
 
+
 DB_PATH = "leaderboard.db"
 
 
@@ -140,7 +141,12 @@ def submit_result():
         "outcome": outcome
     }})
 
-
+# ===== ADD HEALTH CHECK RIGHT HERE 👇 =====
+@app.route('/health')
+def health_check():
+    """Health check endpoint - returns 200 OK for monitoring systems"""
+    return "OK", 200
+# ==========================================
 if __name__ == "__main__":
     init_db()
     app.run(host="127.0.0.1", port=5000, debug=True)
