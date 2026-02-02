@@ -4,9 +4,8 @@ import sqlite3
 
 app = Flask(__name__)
 
-
+# Use consistent database path
 DB_PATH = "leaderboard.db"
-
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -24,7 +23,6 @@ def init_db():
     conn.commit()
     conn.close()
 
-
 def add_score(name, email, time_s, outcome):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -35,7 +33,6 @@ def add_score(name, email, time_s, outcome):
     conn.commit()
     conn.close()
 
-
 def get_scores():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -43,7 +40,6 @@ def get_scores():
     rows = c.fetchall()
     conn.close()
     return rows
-
 
 @app.route("/")
 def index():
@@ -80,11 +76,12 @@ def index():
             <tr>
                 <th>#</th>
                 <th>Name</th>
+                <th>Email</th>
                 <th>Time (s)</th>
                 <th>Result</th>
                 <th>Submitted</th>
             </tr>
-            {% for i,row in rows %}
+            {% for i, row in rows %}
             {% set cls = "normal-row" %}
             {% set medal = "" %}
             {% if i == 1 %}
@@ -100,6 +97,7 @@ def index():
             <tr class="{{ cls }}">
                 <td>{{ medal }}{{ i }}</td>
                 <td>{{ row[0] }}</td>
+                <td>{{ row[1] }}</td>
                 <td>{{ "%.2f" % row[2] }}</td>
                 <td>{{ row[3] }}</td>
                 <td>{{ row[4] }}</td>
@@ -107,25 +105,12 @@ def index():
             {% endfor %}
         </table>
         <p style="text-align:center;">Play more to climb the leaderboard!</p>
-
-        <!-- ADD THIS AFTER your main </table> -->
-{% if test_scores %}
-<h2 style="color: lime;">🧪 Test Data ({{ test_scores|length }})</h2>
-<table style="background: #0a3d0a; margin: 20px auto; width: 60%;">
-    <tr><th>Rank</th><th>Test Player</th><th>Time (s)</th></tr>
-    {% for i, row in enumerate(test_scores) %}
-    <tr><td>{{ i+1 }}</td><td><strong style="color: lime;">{{ row[0] }}</strong></td><td>{{ "%.2f"|format(row[1]) }}</td></tr>
-    {% endfor %}
-</table>
-{% endif %}
-
     </body>
-    
     </html>
     """
+    # Create indexed list for template
     indexed = list(enumerate(rows, start=1))
     return render_template_string(html, rows=indexed)
-
 
 @app.route("/leaderboard")
 def api_leaderboard():
@@ -135,7 +120,6 @@ def api_leaderboard():
         for r in rows
     ]
     return jsonify(data)
-
 
 @app.route("/submit_result", methods=["POST"])
 def submit_result():
@@ -154,24 +138,24 @@ def submit_result():
         "outcome": outcome
     }})
 
-# ===== ADD HEALTH CHECK RIGHT HERE 👇 =====
 @app.route('/health')
 def health_check():
     """Health check endpoint - returns 200 OK for monitoring systems"""
     return "OK", 200
 
-@app.route('/submit', methods=['POST'])
-def submit_score():
-    data = request.json
-    conn = sqlite3.connect('/tmp/leaderboard.db')  # Render writable path
-    c = conn.cursor()
-    c.execute('INSERT INTO scores (name, score) VALUES (?, ?)', 
-              (data['name'], data['score']))
-    conn.commit()
-    conn.close()
-    return jsonify({'status': 'success'})
+# REMOVE or FIX this duplicate endpoint - it conflicts with submit_result
+# If you need it, fix it to use the same schema:
+# @app.route('/submit', methods=['POST'])
+# def submit_score():
+#     data = request.get_json()
+#     name = data.get('name', 'Player')
+#     score = float(data.get('score', 0.0))
+#     
+#     # You need to provide email and outcome if required by schema
+#     add_score(name, "", score, "completed")
+#     
+#     return jsonify({'status': 'success'})
 
-# ==========================================
 if __name__ == "__main__":
     init_db()
     app.run(host="127.0.0.1", port=5000, debug=True)
