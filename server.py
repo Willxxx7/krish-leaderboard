@@ -82,7 +82,7 @@ def add_score(name, email, time_s, outcome, score_type='game'):
         return False
 
 def get_scores_by_type(score_type):
-    """Get scores by type ('game' or 'test') - returns float for time_s"""
+    """Get scores by type ('game' or 'test')"""
     try:
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
@@ -104,24 +104,7 @@ def get_scores_by_type(score_type):
         
         rows = c.fetchall()
         conn.close()
-        
-        # Convert time_s to float to ensure it's numeric
-        converted_rows = []
-        for row in rows:
-            if score_type == 'game':
-                try:
-                    time_float = float(row[1])
-                    converted_rows.append((row[0], time_float, row[2], row[3]))
-                except:
-                    converted_rows.append((row[0], 0.0, row[2], row[3]))
-            else:
-                try:
-                    time_float = float(row[1])
-                    converted_rows.append((row[0], time_float, row[2]))
-                except:
-                    converted_rows.append((row[0], 0.0, row[2]))
-        
-        return converted_rows
+        return rows
     except Exception as e:
         print(f"❌ Error getting scores: {e}")
         print(traceback.format_exc())
@@ -129,16 +112,56 @@ def get_scores_by_type(score_type):
 
 @app.route("/")
 def index():
-    """Main page with game and test scores"""
+    """Main page with game and test scores - SIMPLIFIED VERSION"""
     try:
         # Initialize database if needed
         init_db()
         
-        # Get scores (time_s will be float)
+        # Get scores
         game_scores = get_scores_by_type('game')
         test_scores = get_scores_by_type('test')
         
-        html = """
+        # Create indexed lists WITHOUT enumerate
+        indexed_game_scores = []
+        for i, row in enumerate(game_scores, 1):
+            try:
+                time_float = float(row[1])
+                indexed_game_scores.append({
+                    'rank': i,
+                    'name': row[0],
+                    'time': time_float,
+                    'outcome': row[2],
+                    'timestamp': row[3]
+                })
+            except:
+                indexed_game_scores.append({
+                    'rank': i,
+                    'name': row[0],
+                    'time': 0.0,
+                    'outcome': row[2],
+                    'timestamp': row[3]
+                })
+        
+        indexed_test_scores = []
+        for i, row in enumerate(test_scores, 1):
+            try:
+                time_float = float(row[1])
+                indexed_test_scores.append({
+                    'rank': i,
+                    'name': row[0],
+                    'time': time_float,
+                    'timestamp': row[2]
+                })
+            except:
+                indexed_test_scores.append({
+                    'rank': i,
+                    'name': row[0],
+                    'time': 0.0,
+                    'timestamp': row[2]
+                })
+        
+        # SIMPLE HTML TEMPLATE WITHOUT COMPLEX JINJA2 FORMATTING
+        html = f"""
         <!DOCTYPE html>
         <html>
         <head>
@@ -146,187 +169,146 @@ def index():
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
-                body {
+                body {{
                     font-family: Arial, sans-serif;
                     background: #111;
                     color: #eee;
                     margin: 0;
                     padding: 20px;
-                }
+                }}
                 
-                .container {
+                .container {{
                     max-width: 1200px;
                     margin: 0 auto;
-                }
+                }}
                 
-                h1 {
+                h1 {{
                     text-align: center;
                     color: #4CAF50;
                     margin-bottom: 30px;
-                }
+                }}
                 
-                .section {
+                .section {{
                     background: #1a1a1a;
                     padding: 20px;
                     margin-bottom: 30px;
                     border-radius: 10px;
                     border: 1px solid #333;
-                }
+                }}
                 
-                .section-title {
+                .section-title {{
                     color: #4CAF50;
                     font-size: 1.5em;
                     margin-bottom: 15px;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                }
+                }}
                 
-                .section-count {
-                    font-size: 0.8em;
-                    color: #888;
-                }
-                
-                table {
+                table {{
                     width: 100%;
                     border-collapse: collapse;
                     margin: 15px 0;
-                }
+                }}
                 
-                th {
+                th {{
                     background: #222;
                     color: #fff;
                     padding: 12px;
                     text-align: center;
                     border: 1px solid #444;
-                }
+                }}
                 
-                td {
+                td {{
                     padding: 10px;
                     text-align: center;
                     border: 1px solid #444;
-                }
+                }}
                 
-                .game-table tr:nth-child(even) {
+                .game-table tr:nth-child(even) {{
                     background: #1f1f1f;
-                }
+                }}
                 
-                .game-table tr:nth-child(odd) {
+                .game-table tr:nth-child(odd) {{
                     background: #252525;
-                }
+                }}
                 
-                .test-table {
+                .test-table {{
                     background: #0a3d0a;
-                }
+                }}
                 
-                .test-table tr:nth-child(even) {
+                .test-table tr:nth-child(even) {{
                     background: #0c5a0c;
-                }
+                }}
                 
-                .test-table tr:nth-child(odd) {
+                .test-table tr:nth-child(odd) {{
                     background: #084a08;
-                }
+                }}
                 
                 /* Medal styling */
-                .gold {
+                .gold {{
                     background: #4d3b00 !important;
                     color: #ffd700;
                     font-weight: bold;
-                }
+                }}
                 
-                .silver {
+                .silver {{
                     background: #3b3f4d !important;
                     color: #c0c0c0;
                     font-weight: bold;
-                }
+                }}
                 
-                .bronze {
+                .bronze {{
                     background: #4d2f21 !important;
                     color: #cd7f32;
                     font-weight: bold;
-                }
+                }}
                 
-                .medal-icon {
-                    font-size: 1.2em;
-                    margin-right: 5px;
-                }
-                
-                .time-cell {
+                .time-cell {{
                     font-family: 'Courier New', monospace;
                     font-weight: bold;
                     color: #4CAF50;
-                }
+                }}
                 
-                .test-name {
+                .test-name {{
                     color: #4CAF50;
                     font-weight: bold;
-                }
+                }}
                 
-                .empty-message {
+                .empty {{
                     text-align: center;
                     padding: 30px;
                     color: #888;
                     font-style: italic;
-                    font-size: 1.1em;
-                }
+                }}
                 
-                .stats {
+                .stats {{
                     display: flex;
                     justify-content: space-around;
-                    margin-top: 30px;
-                    padding: 20px;
+                    margin-top: 20px;
+                    padding: 15px;
                     background: #222;
-                    border-radius: 10px;
-                }
+                    border-radius: 8px;
+                }}
                 
-                .stat-item {
+                .stat {{
                     text-align: center;
-                }
+                }}
                 
-                .stat-value {
-                    font-size: 1.8em;
-                    font-weight: bold;
+                .stat-value {{
+                    font-size: 1.5em;
                     color: #4CAF50;
-                    margin-bottom: 5px;
-                }
+                    font-weight: bold;
+                }}
                 
-                .stat-label {
+                .stat-label {{
                     color: #aaa;
                     font-size: 0.9em;
-                    text-transform: uppercase;
-                }
+                }}
                 
-                footer {
+                footer {{
                     text-align: center;
-                    margin-top: 40px;
+                    margin-top: 30px;
                     color: #666;
                     font-size: 0.9em;
-                    padding-top: 20px;
-                    border-top: 1px solid #333;
-                }
-                
-                @media (max-width: 768px) {
-                    .container {
-                        padding: 10px;
-                    }
-                    
-                    table {
-                        font-size: 0.9em;
-                    }
-                    
-                    th, td {
-                        padding: 8px;
-                    }
-                    
-                    .section {
-                        padding: 15px;
-                    }
-                    
-                    .stats {
-                        flex-direction: column;
-                        gap: 15px;
-                    }
-                }
+                }}
             </style>
         </head>
         <body>
@@ -335,12 +317,11 @@ def index():
                 
                 <!-- Game Scores -->
                 <div class="section">
-                    <div class="section-title">
-                        <span>🎮 Game Scores</span>
-                        <span class="section-count">{{ game_count }} players</span>
-                    </div>
-                    
-                    {% if game_scores %}
+                    <div class="section-title">🎮 Game Scores ({len(indexed_game_scores)} players)</div>
+        """
+        
+        if indexed_game_scores:
+            html += """
                     <table class="game-table">
                         <tr>
                             <th>Rank</th>
@@ -349,36 +330,49 @@ def index():
                             <th>Result</th>
                             <th>Submitted</th>
                         </tr>
-                        {% for i, row in game_scores %}
-                        <tr class="{% if i == 1 %}gold{% elif i == 2 %}silver{% elif i == 3 %}bronze{% endif %}">
-                            <td>
-                                {% if i == 1 %}<span class="medal-icon">🥇</span>{% endif %}
-                                {% if i == 2 %}<span class="medal-icon">🥈</span>{% endif %}
-                                {% if i == 3 %}<span class="medal-icon">🥉</span>{% endif %}
-                                {{ i }}
-                            </td>
-                            <td>{{ row[0] }}</td>
-                            <td class="time-cell">{{ "%.2f"|format(row[1]) }}</td>
-                            <td>{{ row[2] }}</td>
-                            <td>{{ row[3] }}</td>
+            """
+            
+            for i, score in enumerate(indexed_game_scores, 1):
+                medal_class = ""
+                medal_icon = ""
+                if i == 1:
+                    medal_class = "gold"
+                    medal_icon = "🥇 "
+                elif i == 2:
+                    medal_class = "silver"
+                    medal_icon = "🥈 "
+                elif i == 3:
+                    medal_class = "bronze"
+                    medal_icon = "🥉 "
+                
+                html += f"""
+                        <tr class="{medal_class}">
+                            <td>{medal_icon}{score['rank']}</td>
+                            <td>{score['name']}</td>
+                            <td class="time-cell">{score['time']:.2f}</td>
+                            <td>{score['outcome']}</td>
+                            <td>{score['timestamp']}</td>
                         </tr>
-                        {% endfor %}
+                """
+            
+            html += """
                     </table>
-                    {% else %}
-                    <div class="empty-message">
-                        🏁 No game scores yet. Be the first to play!
-                    </div>
-                    {% endif %}
+            """
+        else:
+            html += """
+                    <div class="empty">No game scores yet. Be the first to play!</div>
+            """
+        
+        html += f"""
                 </div>
                 
                 <!-- Test Scores -->
                 <div class="section">
-                    <div class="section-title">
-                        <span>🧪 Test Scores</span>
-                        <span class="section-count" style="color: #4CAF50;">{{ test_count }} tests</span>
-                    </div>
-                    
-                    {% if test_scores %}
+                    <div class="section-title">🧪 Test Scores ({len(indexed_test_scores)} tests)</div>
+        """
+        
+        if indexed_test_scores:
+            html += """
                     <table class="test-table">
                         <tr>
                             <th>#</th>
@@ -386,71 +380,56 @@ def index():
                             <th>Time (s)</th>
                             <th>Submitted</th>
                         </tr>
-                        {% for i, row in test_scores %}
+            """
+            
+            for score in indexed_test_scores:
+                html += f"""
                         <tr>
-                            <td>{{ i }}</td>
-                            <td class="test-name">{{ row[0] }}</td>
-                            <td class="time-cell">{{ "%.2f"|format(row[1]) }}</td>
-                            <td>{{ row[2] }}</td>
+                            <td>{score['rank']}</td>
+                            <td class="test-name">{score['name']}</td>
+                            <td class="time-cell">{score['time']:.2f}</td>
+                            <td>{score['timestamp']}</td>
                         </tr>
-                        {% endfor %}
+                """
+            
+            html += """
                     </table>
-                    {% else %}
-                    <div class="empty-message">
-                        🚀 No test scores yet. Run <code>test_leaderboard.py</code> to add test data!
-                    </div>
-                    {% endif %}
+            """
+        else:
+            html += """
+                    <div class="empty">No test scores yet. Run test_leaderboard.py!</div>
+            """
+        
+        html += f"""
                 </div>
                 
                 <!-- Stats -->
                 <div class="stats">
-                    <div class="stat-item">
-                        <div class="stat-value">{{ game_count }}</div>
+                    <div class="stat">
+                        <div class="stat-value">{len(indexed_game_scores)}</div>
                         <div class="stat-label">Game Players</div>
                     </div>
-                    <div class="stat-item">
-                        <div class="stat-value">{{ test_count }}</div>
+                    <div class="stat">
+                        <div class="stat-value">{len(indexed_test_scores)}</div>
                         <div class="stat-label">Test Scores</div>
                     </div>
-                    <div class="stat-item">
+                    <div class="stat">
                         <div class="stat-value">
-                            {% if game_scores %}{{ "%.2f"|format(game_scores[0][1]) }}{% else %}0.00{% endif %}
+                            {indexed_game_scores[0]['time']:.2f if indexed_game_scores else '0.00'}
                         </div>
-                        <div class="stat-label">Best Time (s)</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value">
-                            {% if game_scores or test_scores %}🟢 Active{% else %}⚪ Ready{% endif %}
-                        </div>
-                        <div class="stat-label">Status</div>
+                        <div class="stat-label">Best Time</div>
                     </div>
                 </div>
                 
                 <footer>
-                    <p>🔧 <strong>Endpoints:</strong> 
-                       <code>/submit_result</code> (game scores) | 
-                       <code>/submit</code> (test scores)
-                    </p>
-                    <p>📊 <strong>API:</strong> <code>/leaderboard</code> | 
-                       <strong>Health:</strong> <code>/health</code></p>
-                    <p>🚀 <strong>Deployed on Render.com</strong> | Database: {{ db_path }}</p>
+                    <p>Running on Render.com | Database: {DB_PATH}</p>
                 </footer>
             </div>
         </body>
         </html>
         """
         
-        indexed_game_scores = list(enumerate(game_scores, start=1))
-        indexed_test_scores = list(enumerate(test_scores, start=1))
-        
-        return render_template_string(
-            html, 
-            game_scores=indexed_game_scores,
-            test_scores=indexed_test_scores,
-            game_count=len(game_scores),
-            test_count=len(test_scores),
-            db_path=DB_PATH
-        )
+        return html
         
     except Exception as e:
         print(f"❌ Error in index: {e}")
@@ -460,10 +439,10 @@ def index():
         <body style="background: #111; color: #eee; padding: 40px; font-family: monospace;">
             <h1>⚠️ Server Error</h1>
             <p><strong>Error:</strong> {str(e)}</p>
-            <p><strong>Database path:</strong> {DB_PATH}</p>
-            <p><strong>Game scores count:</strong> {len(game_scores) if 'game_scores' in locals() else 'N/A'}</p>
-            <p><strong>Test scores count:</strong> {len(test_scores) if 'test_scores' in locals() else 'N/A'}</p>
-            <p>Try refreshing the page or checking Render logs.</p>
+            <p><strong>Full traceback:</strong></p>
+            <pre>{traceback.format_exc()}</pre>
+            <p>Database path: {DB_PATH}</p>
+            <p>Try refreshing the page.</p>
         </body>
         </html>
         """, 500
@@ -477,7 +456,7 @@ def api_leaderboard():
             {
                 "rank": i+1,
                 "name": row[0],
-                "time_s": row[1],
+                "time_s": float(row[1]),
                 "outcome": row[2],
                 "timestamp": row[3]
             }
@@ -539,22 +518,13 @@ def health_check():
         c.execute("SELECT COUNT(*) FROM scores")
         count = c.fetchone()[0]
         
-        # Get score stats
-        c.execute("SELECT COUNT(*) FROM scores WHERE score_type = 'game'")
-        game_count = c.fetchone()[0]
-        
-        c.execute("SELECT COUNT(*) FROM scores WHERE score_type = 'test'")
-        test_count = c.fetchone()[0]
-        
         conn.close()
         
         return jsonify({
             "status": "healthy",
             "database": "connected",
             "tables": [t[0] for t in tables],
-            "total_scores": count,
-            "game_scores": game_count,
-            "test_scores": test_count,
+            "score_count": count,
             "path": DB_PATH
         })
     except Exception as e:
