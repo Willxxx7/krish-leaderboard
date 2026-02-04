@@ -574,7 +574,7 @@ else:
 
 if __name__ == "__main__":
     # Get port from environment (Render sets PORT=10000)
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 5001))
     print(f"🌐 Server starting on port {port}")
     print(f"🔗 Local: http://localhost:{port}")
     print("=" * 60)
